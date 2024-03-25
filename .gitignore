@@ -1,0 +1,5 @@
+uploaded_audios/**
+uploaded_docs/**
+__pycache__/
+
+**.pkl
