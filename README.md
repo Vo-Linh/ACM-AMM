@@ -11,12 +11,18 @@ This project provides a Python implementation for generating speaker-diarized di
 ## Installation:
 
 ### Prerequisites:
-Ensure you have Python 3.6 or later installed.
+Ensure you have Python 3.9 or later installed.
 
 ### Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+#### Install wishperX:
+```bash
+cd modules/whisperX
+pip install -e
+```
+
 ## Usage
 ```python
 pip install -r requirements.txt
@@ -27,6 +33,7 @@ from audio2dia import Audio2Dia
 - This project is under active development. Refer to the code for the latest features and functionalities.
 - For more advanced usage or customization, explore the Audio2Dia class implementation and experiment with different configuration options.
 - Consider responsible use of this technology, ensuring you have appropriate permissions and consent for processing audio recordings.
+- This project uses modules from the Whisper repository ([https://github.com/openai/whisper](https://github.com/openai/whisper))
 
 ## Contributing:
 We welcome contributions to this project! Please refer to the **CONTRIBUTING.md** file for guidelines on how to submit pull requests.
