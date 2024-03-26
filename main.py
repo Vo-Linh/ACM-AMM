@@ -58,6 +58,8 @@ with st.sidebar:
 
     if not os.path.exists(DOCS_DIR):
         os.makedirs(DOCS_DIR)
+    if not os.path.exists(AUDIO_DIR):
+        os.makedirs(AUDIO_DIR)
     st.subheader("Add to the Knowledge Base")
     with st.form("my-form", clear_on_submit=True):
         uploaded_files = st.file_uploader(
@@ -77,12 +79,13 @@ with st.sidebar:
 # ========================================
 #  Audio to Dialogue Model
 # ========================================
-model_audio = Audio2Dia(name_model='large-v2',
-                        batch_size=16,
-                        compute_type = "float16",
-                        device="cuda")
-model_audio.generate(os.path.join(AUDIO_DIR, uploaded_file.name),
-            os.path.join(DOCS_DIR, uploaded_file.name))
+if uploaded_files and submitted:
+    model_audio = Audio2Dia(name_model='large-v2',
+                            batch_size=16,
+                            compute_type = "float16",
+                            device="cuda")
+    model_audio.generate(os.path.join(AUDIO_DIR, uploaded_file.name),
+                os.path.join(DOCS_DIR, uploaded_file.name))
 
 # ========================================
 #  Embedding Model and LLM
