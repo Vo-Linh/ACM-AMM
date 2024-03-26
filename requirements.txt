@@ -4,3 +4,9 @@ faiss-cpu==1.7.4
 langchain==0.0.352
 unstructured[all-docs]==0.11.2
 pyannote.audio
+nltk
+setuptools>=65
+faster-whisper==1.0.0
+torchaudio>=2
+transformers
+pandas
