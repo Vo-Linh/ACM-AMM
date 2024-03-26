@@ -25,8 +25,7 @@ pip install -e
 
 ## Usage
 ```python
-pip install -r requirements.txt
-from audio2dia import Audio2Dia
+TODO
 ```
 
 ## Additional Information:
