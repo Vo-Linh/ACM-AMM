@@ -1,0 +1,5 @@
+whisperx.egg-info/
+**/__pycache__/
+.ipynb_checkpoints
+*.mp3
+*.txt
