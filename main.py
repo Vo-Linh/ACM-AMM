@@ -172,7 +172,7 @@ prompt_summarize = ChatPromptTemplate.from_messages(
 )
 prompt_rephase = ChatPromptTemplate.from_messages(
     [("system", "You are a highly skilled AI trained in language comprehension and summarization."),
-     ("user",  "{input}. Rephrase and expand the question, and respond")]
+     ("user",  "Dialogue:{context}. \nUser query: {input}\nBased on your knowledge, assess whether the queries provided by the user contain sufficient and clear information, and provide guidance to the user regarding the specificity required for these queries.")]
 )
 # ========================================
 user_input = st.chat_input("Can you tell me what NVIDIA is known for?")
@@ -206,7 +206,7 @@ if user_input and vectorstore != None:
         message_placeholder = st.empty()
         full_response = ""
         # for response in chain_summarize.stream({"context_dialogue": out_context, "topic": out_topic, "input": augmented_user_input}):
-        for response in chain_rephase.stream({"input": augmented_user_input}):
+        for response in chain_rephase.stream({"input": user_input, "context":{context}}):
             full_response += response
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)

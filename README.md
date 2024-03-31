@@ -17,15 +17,15 @@ Ensure you have Python 3.9 or later installed.
 ```bash
 pip install -r requirements.txt
 ```
+
 #### Install wishperX:
 ```bash
-cd modules/whisperX
-pip install -e
+pip install git+https://github.com/m-bain/whisperx.git
 ```
 
 ## Usage
-```python
-TODO
+```bash
+bash run_app.sh
 ```
 
 ## Additional Information:

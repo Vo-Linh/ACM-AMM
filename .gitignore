@@ -1,5 +1,7 @@
 uploaded_audios/**
 uploaded_docs/**
 __pycache__/
-
+test.py
+run_test.sh
 **.pkl
+.vscode/
