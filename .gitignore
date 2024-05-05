@@ -1,7 +1,7 @@
-uploaded_audios/**
-uploaded_docs/**
+database/uploaded_audios/**
+database/uploaded_docs/**
 __pycache__/
 test.py
 run_test.sh
-**.pkl
+database/**.pkl
 .vscode/

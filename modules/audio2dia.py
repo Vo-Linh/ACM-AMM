@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8
 # ----------------------------------------------------------------------------
-# Created By  : Linh Vo Van
+# Created By  : Thang Le, Linh Vo Van
 # Organization: ACM Lab
 # Created Date: 2024/03/25
 # version ='1.0'

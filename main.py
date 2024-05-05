@@ -33,9 +33,6 @@
 # 4. LLM Response Generation and Chat: Manages user interaction, retrieves relevant documents,
 #    generates responses using the LLM, and presents conversations in a chat interface.
 # ---------------------------------------------------------------------------
-# ========================================
-# Document Loader
-# ========================================
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -43,60 +40,53 @@ import pickle
 from langchain.vectorstores import FAISS
 from langchain.document_loaders import DirectoryLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_nvidia_ai_endpoints import ChatNVIDIA, NVIDIAEmbeddings
+
+from langchain_community.llms import HuggingFaceHub
+from langchain_community.embeddings import HuggingFaceHubEmbeddings
+from langchain_community.embeddings import HuggingFaceInstructEmbeddings
+from langchain_community.chat_models.huggingface import ChatHuggingFace
+
 import streamlit as st
 import os
 
-from modules.audio2dia import Audio2Dia
-from modules.utils import write_audio
 
+from modules.utils import upload_file
+from modules.audio2dia import Audio2Dia
+
+# ========================================
+# Document Loader
+# ========================================
 st.set_page_config(layout="wide")
 
-with st.sidebar:
-    DOCS_DIR = os.path.abspath("./uploaded_docs")
-    AUDIO_DIR = os.path.abspath("./uploaded_audios")
+DOCS_DIR_PATH = "database/uploaded_docs"
+AUDIO_DIR_PATH = "database/uploaded_audios"
 
-    if not os.path.exists(DOCS_DIR):
-        os.makedirs(DOCS_DIR)
-    if not os.path.exists(AUDIO_DIR):
-        os.makedirs(AUDIO_DIR)
-    st.subheader("Add to the Knowledge Base")
-    with st.form("my-form", clear_on_submit=True):
-        uploaded_files = st.file_uploader(
-            "Upload a file to the Knowledge Base:",
-            type=["mp3", "wav"],
-            accept_multiple_files=True)
-        submitted = st.form_submit_button("Upload!")
+uploaded_files, submitted = upload_file(DOCS_DIR_PATH, AUDIO_DIR_PATH)
 
-    if uploaded_files and submitted:
-        for uploaded_file in uploaded_files:
-            st.success(f"File {uploaded_file.name} uploaded successfully!")
-            write_audio(os.path.join(AUDIO_DIR, uploaded_file.name), samplerate=44100,
-                        audio=uploaded_file.read())
-            # with open(os.path.join(AUDIO_DIR, uploaded_file.name), "wb") as f:
-            #     f.write(uploaded_file.read())
-
-# ========================================
 #  Audio to Dialogue Model
-# ========================================
 if uploaded_files and submitted:
-    model_audio = Audio2Dia(name_model='large-v2',
-                            batch_size=16,
-                            compute_type = "float16",
-                            device="cuda")
-    model_audio.generate(os.path.join(AUDIO_DIR, uploaded_file.name),
-                os.path.join(DOCS_DIR, uploaded_file.name))
-
+    for uploaded_file in uploaded_files:
+        model_audio = Audio2Dia(name_model='large-v2',
+                                batch_size=16,
+                                compute_type="int8",
+                                device="cpu")
+        model_audio.generate(os.path.join(AUDIO_DIR_PATH, uploaded_file.name),
+                                os.path.join(AUDIO_DIR_PATH, uploaded_file.name))
 # ========================================
 #  Embedding Model and LLM
 # ========================================
 
-
-llm = ChatNVIDIA(model="mixtral_8x7b", device="cuda:0")
-document_embedder = NVIDIAEmbeddings(
-    model="nvolveqa_40k", model_type="passage", device="cuda:0")
-query_embedder = NVIDIAEmbeddings(
-    model="nvolveqa_40k", model_type="query", device="cuda:0")
+llm = HuggingFaceHub(
+    repo_id="mistralai/Mistral-7B-Instruct-v0.2",
+    task="text-generation",
+    model_kwargs={
+        "max_new_tokens": 512,
+        "top_k": 30,
+        "temperature": 0.1,
+        "repetition_penalty": 1.03,
+    },
+)
+document_embedder = HuggingFaceHubEmbeddings()
 
 # ========================================
 # Vector Database Store
@@ -109,10 +99,10 @@ with st.sidebar:
                                          "Yes", "No"], horizontal=True)
 
 # Path to the vector store file
-vector_store_path = "vectorstore.pkl"
+vector_store_path = "database/vectorstore/vectorstore.pkl"
 
 # Load raw documents from the directory
-raw_documents = DirectoryLoader(DOCS_DIR).load()
+raw_documents = DirectoryLoader(os.path.abspath(DOCS_DIR_PATH)).load()
 
 
 # Check for existing vector store file
@@ -175,9 +165,9 @@ prompt_rephase = ChatPromptTemplate.from_messages(
      ("user",  "Dialogue:{context}. \nUser query: {input}\nBased on your knowledge, assess whether the queries provided by the user contain sufficient and clear information, and provide guidance to the user regarding the specificity required for these queries.")]
 )
 # ========================================
-user_input = st.chat_input("Can you tell me what NVIDIA is known for?")
-llm = ChatNVIDIA(model="mixtral_8x7b")
+user_input = st.chat_input("Can you tell me what is known for?")
 
+# ===== Prompt pipeline =====
 chain = llm | StrOutputParser()
 chain_summarize = prompt_summarize | llm | StrOutputParser()
 chain_rephase = prompt_rephase | llm | StrOutputParser()
@@ -193,6 +183,7 @@ if user_input and vectorstore != None:
     for doc in docs:
         context += doc.page_content + "\n\n"
 
+    # generate specific prompt
     augmented_user_input = "Context: " + context + \
         "\n\nQuestion: " + user_input + "\n"
     topic_generate = prompt_indetify_topic | chain
