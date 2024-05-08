@@ -21,10 +21,10 @@
 # External Libraries:
 # - Streamlit: Provides a user-friendly web interface.
 # - langchain: Facilitates working with language models and vector stores.
-# - NVIDIA AI Endpoints: Connects to NVIDIA's AI models for embedding and response generation.
+# - OPENAI_AI_KEY Endpoints: Connects to NVIDIA's AI models for embedding and response generation.
 
 # Environment Variables:
-# - NVIDIA_API_KEY: Required for accessing NVIDIA AI services.
+# - OPENAI_AI_KEY: Required for accessing OPENAI_AI_KEY services.
 
 # Component Structure:
 # 1. Knowledge Base Management: Handles file uploads and storage.
@@ -34,23 +34,20 @@
 #    generates responses using the LLM, and presents conversations in a chat interface.
 # ---------------------------------------------------------------------------
 
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-import pickle
-from langchain.vectorstores import FAISS
+
 from langchain.document_loaders import DirectoryLoader
-from langchain.text_splitter import CharacterTextSplitter
 
 from langchain_community.llms import HuggingFaceHub
 from langchain_community.embeddings import HuggingFaceHubEmbeddings
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.chat_models.huggingface import ChatHuggingFace
 
-import streamlit as st
 import os
+import streamlit as st
 
-
-from modules.utils import upload_file
+from modules.utils import upload_file, store_vector
 from modules.audio2dia import Audio2Dia
 
 # ========================================
@@ -71,7 +68,7 @@ if uploaded_files and submitted:
                                 compute_type="int8",
                                 device="cpu")
         model_audio.generate(os.path.join(AUDIO_DIR_PATH, uploaded_file.name),
-                                os.path.join(AUDIO_DIR_PATH, uploaded_file.name))
+                             os.path.join(AUDIO_DIR_PATH, uploaded_file.name))
 # ========================================
 #  Embedding Model and LLM
 # ========================================
@@ -107,30 +104,9 @@ raw_documents = DirectoryLoader(os.path.abspath(DOCS_DIR_PATH)).load()
 
 # Check for existing vector store file
 vector_store_exists = os.path.exists(vector_store_path)
-vectorstore = None
-if use_existing_vector_store == "Yes" and vector_store_exists:
-    with open(vector_store_path, "rb") as f:
-        vectorstore = pickle.load(f)
-    with st.sidebar:
-        st.success("Existing vector store loaded successfully.")
-else:
-    with st.sidebar:
-        if raw_documents:
-            with st.spinner("Splitting documents into chunks..."):
-                text_splitter = CharacterTextSplitter(
-                    chunk_size=2000, chunk_overlap=200)
-                documents = text_splitter.split_documents(raw_documents)
-
-            with st.spinner("Adding document chunks to vector database..."):
-                vectorstore = FAISS.from_documents(
-                    documents, document_embedder)
-
-            with st.spinner("Saving vector store"):
-                with open(vector_store_path, "wb") as f:
-                    pickle.dump(vectorstore, f)
-            st.success("Vector store created and saved.")
-        else:
-            st.warning("No documents available to process!", icon="⚠️")
+# vectorstore = None
+vectorstore = store_vector(vector_store_path, raw_documents,
+             use_existing_vector_store, document_embedder)
 
 # ========================================
 # LLM Response Generation and Chat
@@ -149,27 +125,40 @@ for message in st.session_state.messages:
 # ========================================
 # Design Prompt
 
-prompt_indetify_topic = ChatPromptTemplate.from_template(
-    "You are a proficient AI with a specialty in distilling information into key points. Based on the following text, identify and list the main points that were discussed or brought up. These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion. Your goal is identify what is topic discussion in this {augmented_user_input}.Return the name of the topic and nothing else:"
-)
-prompt_indetify_context = ChatPromptTemplate.from_template(
-    "You are a highly skilled AI trained in language comprehension and summarization. I would like you generate context of {augmented_user_input}"
-)
-prompt_summarize = ChatPromptTemplate.from_messages(
-    [("system", "You are a highly skilled AI trained in language comprehension and summarization."),
-     ("user", "Based on {context_dialogue} and {topic} I would you summarize {input} into a concise abstract paragraph. Aim to retain the most important points, providing a coherent and readable summary that could help a person understand the main points of the discussion without needing to read the entire text. Please avoid unnecessary details or tangential points.")]
-
-)
 prompt_rephase = ChatPromptTemplate.from_messages(
     [("system", "You are a highly skilled AI trained in language comprehension and summarization."),
      ("user",  "Dialogue:{context}. \nUser query: {input}\nBased on your knowledge, assess whether the queries provided by the user contain sufficient and clear information, and provide guidance to the user regarding the specificity required for these queries.")]
+)
+
+prompt_seeking = ChatPromptTemplate.from_messages(
+    [("system", "You're an expert at understanding what users are looking for. I'll provide the prompt typed by the user, and you'll determine what the user is intent"),
+     ("user", "{prompt}")]
+)
+
+prompt_indetify = ChatPromptTemplate.from_messages(
+    [("system", "You're proficient in domain language. Given the user's prompt and their intent, assist me in determining whether the provided information is sufficient or not.The respone only return yes or no, nothing else"),
+     ("user", "user's prompt: {user_prompt}\n\nuser's intent: {user_intent}. The respone only return one word yes or no, nothing else, and remove anything else")]
+)
+
+prompt_finding = ChatPromptTemplate.from_messages(
+    [("system", "You're an expert in domain language. Based on the user's prompt and their intention, help me identify what information the user might be missing from the prompt and return it under list format."),
+    ("user", "user's prompt: {user_prompt}\n\nuser's intent: {user_intent}")]
+)
+prompt_format = ChatPromptTemplate.from_messages(
+    [("system", "You're a prompt engineer. Given the missing information from the user, assist me in generating a prompt format"),
+     ("user", "List missing information: {missing_information}")]
 )
 # ========================================
 user_input = st.chat_input("Can you tell me what is known for?")
 
 # ===== Prompt pipeline =====
+# parser actually doesn’t block the streaming output from the model, and instead processes each chunk individuall
 chain = llm | StrOutputParser()
-chain_summarize = prompt_summarize | llm | StrOutputParser()
+chain_seeking = prompt_seeking | llm | StrOutputParser()
+chain_indetify = prompt_indetify | llm | StrOutputParser()
+chain_finding = prompt_finding | llm | StrOutputParser()
+chain_format = prompt_format | llm | StrOutputParser()
+
 chain_rephase = prompt_rephase | llm | StrOutputParser()
 
 if user_input and vectorstore != None:
@@ -178,7 +167,7 @@ if user_input and vectorstore != None:
     docs = retriever.get_relevant_documents(user_input)
     with st.chat_message("user"):
         st.markdown(user_input)
-
+    
     context = ""
     for doc in docs:
         context += doc.page_content + "\n\n"
@@ -186,18 +175,28 @@ if user_input and vectorstore != None:
     # generate specific prompt
     augmented_user_input = "Context: " + context + \
         "\n\nQuestion: " + user_input + "\n"
-    topic_generate = prompt_indetify_topic | chain
-    out_topic = topic_generate.invoke(
-        {"augmented_user_input": augmented_user_input})
-    context_generate = prompt_indetify_context | chain
-    out_context = context_generate.invoke(
-        {"augmented_user_input": augmented_user_input})
+    
+    user_seeking = ""
+    for response in chain_seeking.stream({"prompt": user_input,}):
+        user_seeking += response
+    user_seeking_dict = dict(subString.split(":") for subString in user_seeking.split("\n"))
+    print(user_seeking_dict['System'])
 
+    validate_information = chain_indetify.invoke({"user_prompt": user_input, "user_intent": {user_seeking_dict['System']}})
+    validate_information_list = list(subString for subString in validate_information.split("\n"))
+    print(validate_information_list)
+    if 'yes.' in validate_information_list[-1].lower() or 'yes.' in validate_information_list[-2].lower():
+        print("Yess sir")
+    else:
+        extra_information = chain_finding.invoke({"user_prompt": user_input, "user_intent": {user_seeking_dict['System']}})
+        print(extra_information)
+    # the message will have a default bot icon with name "assistant"
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        # for response in chain_summarize.stream({"context_dialogue": out_context, "topic": out_topic, "input": augmented_user_input}):
-        for response in chain_rephase.stream({"input": user_input, "context":{context}}):
+        # Due to each resposne is generate one words so it need to stored in one
+        # sync stream and async astream
+        for response in chain_rephase.stream({"input": user_input, "context": {context}}):
             full_response += response
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)

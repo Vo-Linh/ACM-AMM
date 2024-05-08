@@ -1,7 +1,7 @@
 database/uploaded_audios/**
 database/uploaded_docs/**
+database/vectorstore/**
 __pycache__/
 test.py
 run_test.sh
-database/**.pkl
 .vscode/
