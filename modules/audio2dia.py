@@ -19,15 +19,15 @@ class Audio2Dia:
     align text with speech, and perform speaker diarization. 
 
     Args:
-        name_model (str): Name of the Whisper model to use for transcription.
-        batch_size (int): Batch size for processing audio during transcription.
-        device (str): Device to run the model on (e.g., "cpu" or "cuda").
-        compute_type (str, optional): Compute type for the model ("fp16" or "fp32"). 
+    - name_model (str): Name of the Whisper model to use for transcription.
+    - batch_size (int): Batch size for processing audio during transcription.
+    - device (str): Device to run the model on (e.g., "cpu" or "cuda").
+    - compute_type (str, optional): Compute type for the model ("fp16" or "fp32"). 
             Defaults to "fp16".
     """
-    def __init__(self, name_model, batch_size, device, compute_type) -> None:
+    def __init__(self, name_model, batch_size, device, device_index, compute_type) -> None:
         self.model = whisperx.load_model(
-            name_model, device, compute_type=compute_type)
+            name_model, device, device_index=device_index, compute_type=compute_type)
         self.batch_size = batch_size
         self.device = device
 
@@ -48,8 +48,8 @@ class Audio2Dia:
         Processes an audio file and saves speaker-diarized dialogue transcripts.
 
         Args:
-            audio_file (str): Path to the audio file for transcription.
-            file_save_dia (str): Path to the output file where transcripts are saved.
+        - audio_file (str): Path to the audio file for transcription.
+        - file_save_dia (str): Path to the output file where transcripts are saved.
         """
         audio = whisperx.load_audio(audio_file)
         result = self.model.transcribe(audio,
@@ -64,7 +64,6 @@ class Audio2Dia:
             use_auth_token="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", device=self.device)
         diarize_segments = diarize_model(audio)
         result = whisperx.assign_word_speakers(diarize_segments, result)
-
 
         result = whisperx.assign_word_speakers(diarize_segments, result)
         text_result =""
