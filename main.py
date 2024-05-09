@@ -41,8 +41,6 @@ from langchain.document_loaders import DirectoryLoader
 
 from langchain_community.llms import HuggingFaceHub
 from langchain_community.embeddings import HuggingFaceHubEmbeddings
-from langchain_community.embeddings import HuggingFaceInstructEmbeddings
-from langchain_community.chat_models.huggingface import ChatHuggingFace
 
 import os
 import streamlit as st
