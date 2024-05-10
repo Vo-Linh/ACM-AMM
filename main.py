@@ -43,8 +43,10 @@ from langchain.chains import LLMChain
 from langchain_community.llms import HuggingFaceHub, HuggingFaceEndpoint
 from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
 from langchain_community.embeddings import HuggingFaceHubEmbeddings
+from langserve import RemoteRunnable
 
 import os
+import torch
 import streamlit as st
 
 from modules.utils import upload_file, store_vector
@@ -69,27 +71,14 @@ if uploaded_files and submitted:
                                 batch_size=16,
                                 compute_type="float16",
                                 device="cuda",
-                                device_index=2)
+                                device_index=0)
         model_audio.generate(os.path.join(AUDIO_DIR_PATH, uploaded_file.name),
                              os.path.join(DOCS_DIR_PATH, f"{uploaded_file.name[:-3]}txt"))
 # ========================================
 #  Embedding Model and LLM
 # ========================================
 
-llm = HuggingFacePipeline.from_model_id(
-    model_id="microsoft/Phi-3-mini-128k-instruct",
-    task="text-generation",
-    device=2,
-    model_kwargs={
-        "top_k": 30,
-        "temperature": 0.1,
-        "repetition_penalty": 1.03,
-        'trust_remote_code':True
-    },
-    pipeline_kwargs={
-        "max_new_tokens": 512,
-    }
-)
+llm = RemoteRunnable("http://localhost:8000/phi/")
 
 document_embedder = HuggingFaceHubEmbeddings()
 # ========================================
@@ -113,7 +102,7 @@ raw_documents = DirectoryLoader(os.path.abspath(DOCS_DIR_PATH)).load()
 vector_store_exists = os.path.exists(vector_store_path)
 # vectorstore = None
 vectorstore = store_vector(vector_store_path, raw_documents,
-             use_existing_vector_store, document_embedder)
+                           use_existing_vector_store, document_embedder)
 
 # ========================================
 # LLM Response Generation and Chat
@@ -129,15 +118,13 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 
-
-
 # ========================================
 user_input = st.chat_input("Can you tell me what is known for?")
 
 # ===== Prompt pipeline =====
 # parser actually doesn’t block the streaming output from the model, and instead processes each chunk individuall
 chain = llm | StrOutputParser()
-llm_chain_seeking = LLMChain(prompt=prompt_seeking, llm=llm)
+
 chain_seeking = prompt_seeking | llm | StrOutputParser()
 chain_indetify = prompt_indetify | llm | StrOutputParser()
 chain_finding = prompt_finding | llm | StrOutputParser()
@@ -151,7 +138,7 @@ if user_input and vectorstore != None:
     docs = retriever.get_relevant_documents(user_input)
     with st.chat_message("user"):
         st.markdown(user_input)
-    
+
     context = ""
     for doc in docs:
         context += doc.page_content + "\n\n"
@@ -159,17 +146,17 @@ if user_input and vectorstore != None:
     # generate specific prompt
     augmented_user_input = "Context: " + context + \
         "\n\nQuestion: " + user_input + "\n"
-    
-    user_seeking = llm_chain_seeking.run(user_input)
 
-    validate_information = chain_indetify.invoke({"user_prompt": user_input, "user_intent": {user_seeking}})
-
-    extra_information = chain_finding.invoke({"user_prompt": user_input, "user_intent": {user_seeking}})
-
+    user_seeking = chain_seeking.invoke({"prompt": user_input})
+    validate_information = chain_indetify.invoke(
+        {"user_prompt": user_input, "user_intent": user_seeking})
+    extra_information = chain_finding.invoke(
+        {"user_prompt": user_input, "user_intent": user_seeking})
     susgestion_format = chain_suggestion.invoke(({
         "missing_information": extra_information
     }))
     print(susgestion_format)
+    torch.cuda.empty_cache()
     # the message will have a default bot icon with name "assistant"
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
