@@ -1,6 +1,7 @@
 database/uploaded_audios/**
 database/uploaded_docs/**
 database/vectorstore/**
+database/greeting_message/**
 __pycache__/
 test.py
 run_test.sh

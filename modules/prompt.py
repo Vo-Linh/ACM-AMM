@@ -3,10 +3,15 @@ from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptT
 # ========================================
 # Design Prompt
 # ========================================
+prompt_basic = ChatPromptTemplate.from_messages(
+    [("system", "You are a highly skilled AI trained in language comprehension and summarization."),
+     ("user",  "{input}")]
+)
 
 prompt_rephase = ChatPromptTemplate.from_messages(
     [("system", "You are a highly skilled AI trained in language comprehension and summarization."),
-     ("user",  "Dialogue:{context}. \nUser query: {input}\nBased on your knowledge, assess whether the queries provided by the user contain sufficient and clear information, and provide guidance to the user regarding the specificity required for these queries.")]
+     ("user",  "Dialogue:{context}. \nUser query: {input}\nBased on your knowledge, assess whether the queries provided by the user contain sufficient and clear information, \
+     and provide guidance to the user regarding the specificity required for these queries.")]
 )
 
 prompt_seeking = ChatPromptTemplate.from_messages(

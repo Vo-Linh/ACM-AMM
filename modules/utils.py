@@ -23,12 +23,12 @@ def upload_file(docs_path, audio_path):
             os.makedirs(DOCS_DIR)
         if not os.path.exists(AUDIO_DIR):
             os.makedirs(AUDIO_DIR)
-        st.subheader("Add to the Knowledge Base")
+        st.subheader("Add audio meeting to the Database Base")
 
         with st.form("my-form", clear_on_submit=True):
             uploaded_files = st.file_uploader(
-                "Upload a file to the Knowledge Base:",
-                type=["mp3", "wav"],
+                "Upload a file to the Database Base:",
+                type=["wav"],
                 accept_multiple_files=True)
             submitted = st.form_submit_button("Upload!")
 
@@ -37,8 +37,6 @@ def upload_file(docs_path, audio_path):
                 st.success(f"File {uploaded_file.name} uploaded successfully!")
                 write_audio(os.path.join(AUDIO_DIR, uploaded_file.name), samplerate=44100,
                             audio=uploaded_file.read())
-                # with open(os.path.join(AUDIO_DIR, uploaded_file.name), "wb") as f:
-                #     f.write(uploaded_file.read())
 
         return uploaded_files, submitted
 

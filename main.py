@@ -66,7 +66,6 @@ uploaded_files, submitted = upload_file(DOCS_DIR_PATH, AUDIO_DIR_PATH)
 #  Audio to Dialogue Model
 if uploaded_files and submitted:
     for uploaded_file in uploaded_files:
-        print(uploaded_file.name[:-3])
         model_audio = Audio2Dia(name_model='large-v2',
                                 batch_size=16,
                                 compute_type="float16",
@@ -119,11 +118,23 @@ for message in st.session_state.messages:
 
 
 # ========================================
+# Ininital Greeting Message
+# ========================================
 user_input = st.chat_input("Can you tell me what is known for?")
+# Check if greeting has been shown before (using session state)
+if 'shown_greeting' not in st.session_state:
+    st.session_state['shown_greeting'] = False
+
+if not st.session_state['shown_greeting']:
+    with st.chat_message("assistant"):
+        f = open("database/greeting_message/total.txt", "r")
+        st.write(f.read())
+        f.close()
+        st.session_state['shown_greeting'] = True  # Mark as shown
 
 # ===== Prompt pipeline =====
 # parser actually doesn’t block the streaming output from the model, and instead processes each chunk individuall
-chain = llm | StrOutputParser()
+chain_basic = prompt_basic | llm | StrOutputParser()
 
 chain_seeking = prompt_seeking | llm | StrOutputParser()
 chain_indetify = prompt_indetify | llm | StrOutputParser()
@@ -136,6 +147,7 @@ if user_input and vectorstore != None:
     st.session_state.messages.append({"role": "user", "content": user_input})
     retriever = vectorstore.as_retriever()
     docs = retriever.get_relevant_documents(user_input)
+
     with st.chat_message("user"):
         st.markdown(user_input)
 
@@ -147,25 +159,29 @@ if user_input and vectorstore != None:
     augmented_user_input = "Context: " + context + \
         "\n\nQuestion: " + user_input + "\n"
 
-    user_seeking = chain_seeking.invoke({"prompt": user_input})
-    validate_information = chain_indetify.invoke(
-        {"user_prompt": user_input, "user_intent": user_seeking})
-    extra_information = chain_finding.invoke(
-        {"user_prompt": user_input, "user_intent": user_seeking})
-    susgestion_format = chain_suggestion.invoke(({
-        "missing_information": extra_information
-    }))
-    print(susgestion_format)
-    torch.cuda.empty_cache()
+    # user_seeking = chain_seeking.invoke({"prompt": user_input})
+    # validate_information = chain_indetify.invoke(
+    #     {"user_prompt": user_input, "user_intent": user_seeking})
+    # extra_information = chain_finding.invoke(
+    #     {"user_prompt": user_input, "user_intent": user_seeking})
+    # susgestion_format = chain_suggestion.invoke(({
+    #     "missing_information": extra_information
+    # }))
+    # # TODO
+    # # 1. Change behavior of susgestion format of Phi model
+    # print(susgestion_format)
+
     # the message will have a default bot icon with name "assistant"
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
         # Due to each resposne is generate one words so it need to stored in one
         # sync stream and async astream
-        for response in chain_rephase.stream({"input": user_input, "context": {context}}):
+        for response in chain_basic.stream({"input": augmented_user_input}):
+        # for response in chain_rephase.stream({"input": user_input, "context": {context}}):
             full_response += response
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)
+    # store session_state of each interact
     st.session_state.messages.append(
         {"role": "assistant", "content": full_response})
