@@ -1,12 +1,49 @@
-from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate, MessagesPlaceholder
 
 # ========================================
 # Design Prompt
 # ========================================
 
+contextualize_q_system_prompt = """Given a chat history and the latest user question \
+which might reference context in the chat history, formulate a standalone question \
+If you don't have enough information provided by the user, \
+Just say that you don't have enough information. \
+which can be understood without the chat history. Do NOT answer the question, \
+just reformulate it if needed and otherwise return it as is."""
+contextualize_q_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", contextualize_q_system_prompt),
+        MessagesPlaceholder("chat_history"),
+        ("human", "{input}"),
+    ]
+)
+
+qa_system_prompt = """You are an assistant for writing meeting minutes tasks. \
+Use the following pieces of retrieved context to perform the require. \
+If you don't have enough information provided by the user, \
+Just say that you don't have enough information. \
+Keep the answer concise.\
+
+{context}"""
+qa_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", qa_system_prompt),
+        MessagesPlaceholder("chat_history"),
+        ("human", "{input}"),
+    ]
+)
+
+prompt_basic = ChatPromptTemplate.from_messages(
+    [("system", "You are a highly skilled AI trained in language."),
+     ("user",  "{input}. Base on context, rephrase the query if necessary, and respond")]
+)
+
 prompt_rephase = ChatPromptTemplate.from_messages(
     [("system", "You are a highly skilled AI trained in language comprehension and summarization."),
-     ("user",  "Dialogue:{context}. \nUser query: {input}\nBased on your knowledge, assess whether the queries provided by the user contain sufficient and clear information, and provide guidance to the user regarding the specificity required for these queries.")]
+     ("user",  "Dialogue:{context}. \nUser query: {input}\nBased on your knowledge, assess whether the queries provided by the user contain sufficient and clear information, \
+     and provide guidance to the user regarding the specificity required for these queries.")]
 )
 
 prompt_seeking = ChatPromptTemplate.from_messages(
