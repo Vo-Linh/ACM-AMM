@@ -1,0 +1,35 @@
+👋 Hello and welcome to our Automatic Meeting Minutes Assistant! Sit back, relax, and let us handle the tedious task of capturing all the important points from your meetings. Get ready for streamlined, accurate, and hassle-free meeting summaries!
+
+Here are shorter descriptions for each type of voice:
+1. **Active Voice**: The subject performs the action. Example: "The team discussed the project timeline."
+2. **Passive Voice**: The action is emphasized over the performer. Example: "The project timeline was discussed by the team."
+
+Different levels of detail:
+1. **High-Level Minutes 🚀**: Provides a concise summary of main points, decisions, and action items, focusing on capturing the essence of the meeting without diving into every detail.
+2. **Medium-Level Minutes 📝**: Offers more detail than high-level summaries, including additional context, key discussion points, and relevant information for understanding meeting outcomes.
+3. **Detailed Minutes 📊**: Capture almost every aspect of the meeting, including verbatim quotes, detailed discussion explanations, and comprehensive documentation of each agenda item.
+
+Types of Meeting Minutes:
+1. **Executive Minutes 🎩**: Summarizing meetings for senior executives, focusing on outcomes, key decisions, and action items to provide a swift overview of discussions.
+
+2. **Verbatim Minutes 🔍**: Word-for-word transcripts capturing every detail of the meeting, often used in high-stakes negotiations, legal proceedings, or situations where precise documentation is crucial.
+
+3. **Informal Minutes 📝**: Offering a more casual, flexible approach, serving as memory aids in creative settings or small team meetings, prioritizing spontaneity over strict structure.
+
+4. **Formal Minutes 📜**: Following strict formats, including all necessary elements such as call to order, previous minutes' approval, discussion details, votes, and action items, typical in board meetings or government bodies.
+
+5. **Discussion Minutes 💬**: Providing a detailed account of discussions, capturing viewpoints, debates, and reasons for decisions, valuable for strategic planning and retrospective analysis.
+
+6. **Action Minutes ⚙️**: Documenting decisions and action points without detailing preceding discussions, offering a broad overview focused on task accomplishment, commonly used in operational meetings.
+
+Great, here's a prompt tailored for generating meeting minutes:
+
+---
+
+**Prompt:**
+
+Write meeting minutes for a `[Meeting Type]` held in a `[Voice]` tone with a `[Level of Detail]` level of detail.
+
+---
+
+You can replace `[Meeting Type]`, `[Voice]`, and `[Level of Detail]` with the options from their respective lists to create various prompts for different scenarios. This should help LLMs work effectively in generating meeting minutes tailored to specific contexts.
