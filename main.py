@@ -36,10 +36,10 @@
 
 from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import HumanMessage
 
-from langchain.document_loaders import DirectoryLoader
-
-from langchain.chains import LLMChain
+from langchain.chains import LLMChain, create_history_aware_retriever
+from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.llms import HuggingFaceHub, HuggingFaceEndpoint
 from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
 from langchain_community.embeddings import HuggingFaceHubEmbeddings
@@ -148,6 +148,15 @@ if user_input and vectorstore != None:
     retriever = vectorstore.as_retriever()
     docs = retriever.get_relevant_documents(user_input)
 
+    ### Chain with chat history ###
+    chat_history = []
+    history_aware_retriever = create_history_aware_retriever(
+        llm, retriever, contextualize_q_prompt
+    )
+    question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+
+    rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+    # =============================
     with st.chat_message("user"):
         st.markdown(user_input)
 
@@ -159,29 +168,14 @@ if user_input and vectorstore != None:
     augmented_user_input = "Context: " + context + \
         "\n\nQuestion: " + user_input + "\n"
 
-    # user_seeking = chain_seeking.invoke({"prompt": user_input})
-    # validate_information = chain_indetify.invoke(
-    #     {"user_prompt": user_input, "user_intent": user_seeking})
-    # extra_information = chain_finding.invoke(
-    #     {"user_prompt": user_input, "user_intent": user_seeking})
-    # susgestion_format = chain_suggestion.invoke(({
-    #     "missing_information": extra_information
-    # }))
-    # # TODO
-    # # 1. Change behavior of susgestion format of Phi model
-    # print(susgestion_format)
-
     # the message will have a default bot icon with name "assistant"
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
         # Due to each resposne is generate one words so it need to stored in one
-        # sync stream and async astream
-        for response in chain_basic.stream({"input": augmented_user_input}):
-        # for response in chain_rephase.stream({"input": user_input, "context": {context}}):
-            full_response += response
-            message_placeholder.markdown(full_response + "▌")
-        message_placeholder.markdown(full_response)
+        respond_rag = rag_chain.invoke({"input": user_input, "chat_history": chat_history})
+        message_placeholder.markdown(respond_rag['answer'])
+        chat_history.extend([HumanMessage(content=user_input), respond_rag['answer']])
     # store session_state of each interact
     st.session_state.messages.append(
-        {"role": "assistant", "content": full_response})
+        {"role": "assistant", "content": respond_rag['answer']})

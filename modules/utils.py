@@ -4,7 +4,7 @@ import streamlit as st
 import pickle
 import os
 
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import CharacterTextSplitter
 
 def upload_file(docs_path, audio_path):
