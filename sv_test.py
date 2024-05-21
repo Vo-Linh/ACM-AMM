@@ -2,10 +2,9 @@
 import torch
 import streamlit as st
 from fastapi import FastAPI
-from transformers import AutoModelForSeq2SeqLM
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
-from langchain_community.llms import HuggingFaceHub
 from langserve import add_routes
 
 app = FastAPI(
@@ -15,7 +14,7 @@ app = FastAPI(
 )
 
 @st.cache_resource
-def load_model():
+def load_model(model_id = "microsoft/Phi-3-mini-128k-instruct"):
     """Loads the large language model for text generation.
 
     This function utilizes the HuggingFace Pipeline to load the specified model ID
@@ -24,8 +23,7 @@ def load_model():
 
     Args:
         model_id (str): The ID of the model to load from the HuggingFace model hub
-            (e.g., "microsoft/Phi-3-mini-4k-instruct").
-        task (str, optional): The task for which the model is being loaded. Defaults to "text-generation".
+            (e.g., "microsoft/Phi-3-mini-128k-instruct").
         device (int, optional): The device on which to load the model (e.g., GPU index). Defaults to 1.
         model_kwargs (dict, optional): Keyword arguments passed to the HuggingFace Pipeline for model loading.
             Defaults to a dictionary containing parameters for beam search, sampling, and data type.
@@ -33,8 +31,11 @@ def load_model():
     Returns:
         transformers.pipeline.Pipeline: The loaded HuggingFace Pipeline object representing the LLM.
     """
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+    streamer = TextStreamer(tokenizer)
     return HuggingFacePipeline.from_model_id(
-        model_id="microsoft/Phi-3-mini-4k-instruct",
+        model_id=model_id,
         task="text-generation",
         device=1,
         model_kwargs={
@@ -47,6 +48,8 @@ def load_model():
         },
         pipeline_kwargs={
             "max_new_tokens": 1024,
+            "return_full_text": False,
+            # "streamer": streamer
         },
     )
 
