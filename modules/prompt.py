@@ -1,3 +1,28 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8
+"""
+----------------------------------------------------------------------------
+Created By  : Van-Linh Vo
+Organization: ACM Lab
+Created Date: 2024/04/25
+version ='1.0'
+Description:
+Automatic Meeting Assistant
+This application leverages language models and a knowledge base to provide
+comprehensive responses to user queries within a chat interface.
+
+langchain: Facilitates working with language models and vector stores.
+
+Component Structure:
+1. Prompt Templates: Defines various chat prompt templates for different tasks.
+2. Example Prompts: Provides example prompts for few-shot learning.
+3. Prompt Optimization Class: Contains the `PromptOptimze` class for optimizing prompts using an LLM.
+
+Environment Variables:
+- None
+
+----------------------------------------------------------------------------
+"""
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate, MessagesPlaceholder
@@ -6,11 +31,11 @@ from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptT
 # Design Prompt
 # ========================================
 
-contextualize_q_system_prompt = """Given a chat history and the latest user question \
-which might reference context in the chat history, formulate a standalone question \
+contextualize_q_system_prompt = """Given a chat history and the latest user question or instruction \
+which might reference context in the chat history, formulate a standalone instruction \
 If you don't have enough information provided by the user, \
 Just say that you don't have enough information. \
-which can be understood without the chat history. Do NOT answer the question, \
+which can be understood without the chat history. Do NOT answer the instruction, \
 just reformulate it if needed and otherwise return it as is."""
 contextualize_q_prompt = ChatPromptTemplate.from_messages(
     [

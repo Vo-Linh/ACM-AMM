@@ -1,4 +1,39 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8
+"""
+Server Module
+----------------------------------------------------------------------------
+
+Created By  : Van-Linh Vo
+Organization: ACM Lab
+Created Date: 2024/04/25
+version ='1.0'
+This module implements an API server using Langchain's Runnable interfaces. It utilizes 
+HuggingFace's transformers library for loading a large language model (LLM) and text generation.
+
+Dependencies:
+    - torch: PyTorch library for deep learning.
+    - streamlit: Streamlit library for building interactive web apps.
+    - fastapi: FastAPI framework for building APIs.
+    - transformers: HuggingFace's library for state-of-the-art NLP models.
+    - langchain: Langchain library for runnable interfaces.
+    - langchain_community: Langchain community library for additional utilities.
+    - langserve: Langserve library for serving language models.
+
+Usage:
+    To run the server, execute this module as a script. The server exposes an API endpoint
+    "/phi" for generating text using the loaded language model.
+
+Example:
+    ```
+    python server.py
+    ```
+
+Functions:
+    - load_model: Loads the specified large language model from the HuggingFace model hub.
+      Utilizes the HuggingFace Pipeline for model loading and caching.
+----------------------------------------------------------------------------
+"""
 import torch
 import streamlit as st
 from fastapi import FastAPI

@@ -1,57 +1,52 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8
-# ----------------------------------------------------------------------------
-# Created By  : Linh Vo Van
-# Organization: ACM Lab
-# Created Date: 2024/03/15
-# version ='1.0'
-# Description:
-# Automatic Meeting Assistant
-# This application leverages language models and a knowledge base to provide
-# comprehensive responses to user queries within a chat interface.
+"""----------------------------------------------------------------------------
+Created By  : Van-Linh Vo
+Organization: ACM Lab
+Created Date: 2024/03/15
+version ='1.0'
+Description:
+Automatic Meeting Assistant
+This application leverages language models and a knowledge base to provide
+comprehensive responses to user queries within a chat interface.
 
-# Key Features:
-# - Knowledge Base Creation: Users can upload documents to a knowledge base.
-# - Document Retrieval: The application retrieves relevant documents from the
-#   knowledge base based on user queries.
-# - LLM Response Generation: It uses a large language model to generate
-#   informative responses, considering both the user's query and retrieved
-#   context.
+Key Features:
+- Knowledge Base Creation: Users can upload documents to a knowledge base.
+- Document Retrieval: The application retrieves relevant documents from the
+  knowledge base based on user queries.
+- LLM Response Generation: It uses a large language model to generate
+  informative responses, considering both the user's query and retrieved
+  context.
 
-# External Libraries:
-# - Streamlit: Provides a user-friendly web interface.
-# - langchain: Facilitates working with language models and vector stores.
-# - OPENAI_AI_KEY Endpoints: Connects to NVIDIA's AI models for embedding and response generation.
+External Libraries:
+- Streamlit: Provides a user-friendly web interface.
+- langchain: Facilitates working with language models and vector stores.
 
-# Environment Variables:
-# - OPENAI_AI_KEY: Required for accessing OPENAI_AI_KEY services.
+Environment Variables:
+- HUGGINGFACEHUB_API_TOKEN: Required for accessing HUGGINGFACEHUB_API_TOKEN services.
 
-# Component Structure:
-# 1. Knowledge Base Management: Handles file uploads and storage.
-# 2. Embedding Model and LLM: Loads and initializes language models and embedders.
-# 3. Vector Database Store: Creates and manages a FAISS vector store for document retrieval.
-# 4. LLM Response Generation and Chat: Manages user interaction, retrieves relevant documents,
-#    generates responses using the LLM, and presents conversations in a chat interface.
-# ---------------------------------------------------------------------------
-
-from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import HumanMessage
-
-from langchain.chains import LLMChain, create_history_aware_retriever
-from langchain_community.document_loaders import DirectoryLoader
-from langchain_community.llms import HuggingFaceHub, HuggingFaceEndpoint
-from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
-from langchain_community.embeddings import HuggingFaceHubEmbeddings
-from langserve import RemoteRunnable
-
+Component Structure:
+1. Knowledge Base Management: Handles file uploads and storage.
+2. Embedding Model and LLM: Loads and initializes language models and embedders.
+3. Vector Database Store: Creates and manages a FAISS vector store for document retrieval.
+4. LLM Response Generation and Chat: Manages user interaction, retrieves relevant documents,
+   generates responses using the LLM, and presents conversations in a chat interface.
+---------------------------------------------------------------------------"""
 import os
-import torch
+
 import streamlit as st
 
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_history_aware_retriever
+from langchain.chains import create_retrieval_chain
+from langchain_community.document_loaders import DirectoryLoader
+from langchain_community.embeddings import HuggingFaceHubEmbeddings
+from langchain_core.messages import HumanMessage
+
+from langserve import RemoteRunnable
 from modules.utils import upload_file, store_vector
 from modules.audio2dia import Audio2Dia
-from modules.prompt import *
+from modules.prompt import contextualize_q_prompt, qa_prompt
 
 # ========================================
 # Document Loader
@@ -91,16 +86,15 @@ with st.sidebar:
                                          "Yes", "No"], horizontal=True)
 
 # Path to the vector store file
-vector_store_path = "database/vectorstore/vectorstore.pkl"
+VECTOR_STORE_PATH = "database/vectorstore/vectorstore.pkl"
 
 # Load raw documents from the directory
 raw_documents = DirectoryLoader(os.path.abspath(DOCS_DIR_PATH)).load()
 
-
 # Check for existing vector store file
-vector_store_exists = os.path.exists(vector_store_path)
+VECTOR_STORE_EXISTS = os.path.exists(VECTOR_STORE_PATH)
 # vectorstore = None
-vectorstore = store_vector(vector_store_path, raw_documents,
+vectorstore = store_vector(VECTOR_STORE_PATH, raw_documents,
                            use_existing_vector_store, document_embedder)
 
 # ========================================
@@ -116,7 +110,6 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-
 # ========================================
 # Ininital Greeting Message
 # ========================================
@@ -127,26 +120,18 @@ if 'shown_greeting' not in st.session_state:
 
 if not st.session_state['shown_greeting']:
     with st.chat_message("assistant"):
-        f = open("database/greeting_message/total.txt", "r")
+        f = open("database/greeting_message/total.txt", "r", encoding="utf-8")
         st.write(f.read())
         f.close()
         st.session_state['shown_greeting'] = True  # Mark as shown
 
 # ===== Prompt pipeline =====
-# parser actually doesn’t block the streaming output from the model, and instead processes each chunk individuall
-chain_basic = prompt_basic | llm | StrOutputParser()
+# parser actually doesn’t block the streaming output from the model,
+# and instead processes each chunk individuall
 
-chain_seeking = prompt_seeking | llm | StrOutputParser()
-chain_indetify = prompt_indetify | llm | StrOutputParser()
-chain_finding = prompt_finding | llm | StrOutputParser()
-chain_suggestion = prompt_suggestion | llm | StrOutputParser()
-
-chain_rephase = prompt_rephase | llm | StrOutputParser()
-
-if user_input and vectorstore != None:
+if user_input and vectorstore is not None:
     st.session_state.messages.append({"role": "user", "content": user_input})
     retriever = vectorstore.as_retriever()
-    docs = retriever.get_relevant_documents(user_input)
 
     ### Chain with chat history ###
     chat_history = []
@@ -160,22 +145,15 @@ if user_input and vectorstore != None:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    context = ""
-    for doc in docs:
-        context += doc.page_content + "\n\n"
-
-    # generate specific prompt
-    augmented_user_input = "Dialouge of meeting: " + context + \
-        "\n\nQuestion: " + user_input + "\n"
-
     # the message will have a default bot icon with name "assistant"
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
-        full_response = ""
         # Due to each resposne is generate one words so it need to stored in one
-        respond_rag = rag_chain.invoke({"input": user_input, "chat_history": chat_history})
+        respond_rag = rag_chain.invoke({"input": user_input,
+                                        "chat_history": chat_history})
         message_placeholder.markdown(respond_rag['answer'])
-        chat_history.extend([HumanMessage(content=user_input), respond_rag['answer']])
+        chat_history.extend([HumanMessage(content=user_input),
+                            respond_rag['answer']])
     # store session_state of each interact
     st.session_state.messages.append(
         {"role": "assistant", "content": respond_rag['answer']})
